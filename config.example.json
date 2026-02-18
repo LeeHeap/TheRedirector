@@ -1,0 +1,30 @@
+{
+  "_comment": "Copy this file to config.json and update the paths to match your setup.",
+  "redirects": [
+    {
+      "name": "PrusaSlicer",
+      "source": "C:\\Users\\Lee\\AppData\\Roaming\\PrusaSlicer",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\PrusaSlicer"
+    },
+    {
+      "name": "KeePass",
+      "source": "C:\\Users\\Lee\\AppData\\Roaming\\KeePass",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\KeePass"
+    },
+    {
+      "name": "Everything (Search Tool)",
+      "source": "C:\\Users\\Lee\\AppData\\Roaming\\Everything",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\Everything"
+    },
+    {
+      "name": "Notepad++",
+      "source": "C:\\Users\\Lee\\AppData\\Roaming\\Notepad++",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\Notepad++"
+    },
+    {
+      "name": "PowerToys",
+      "source": "C:\\Users\\Lee\\AppData\\Local\\Microsoft\\PowerToys",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\PowerToys"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# User's personal redirect config (contains local paths)
+config.json
+
+# Screenshots / docs (add manually if you want them tracked)
+docs/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# PowerShell history / temp files
+*.ps1.bak
+*.tmp
