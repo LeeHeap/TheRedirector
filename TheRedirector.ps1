@@ -20,9 +20,7 @@ Add-Type -AssemblyName System.Windows.Forms
 #  GLOBALS
 # ─────────────────────────────────────────────────────────────────────────────
 $script:Version    = "1.0.0"
-$script:ScriptPath = $MyInvocation.MyCommand.Path
-$script:ScriptDir  = Split-Path -Parent $script:ScriptPath
-$script:ConfigPath = Join-Path $script:ScriptDir "config.json"
+$script:ConfigPath = Join-Path $PSScriptRoot "config.json"
 $script:Redirects  = @()
 $script:SelectedItem   = $null
 $script:SelectedBorder = $null
@@ -47,7 +45,7 @@ if (-not (Test-IsAdmin)) {
 
     if ($ans -eq [System.Windows.Forms.DialogResult]::Yes) {
         Start-Process PowerShell -Verb RunAs `
-            -ArgumentList "-STA -NoProfile -ExecutionPolicy Bypass -File `"$script:ScriptPath`""
+            -ArgumentList "-STA -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     }
     exit
 }
@@ -691,19 +689,19 @@ function Disable-Redirect {
 #  LOAD MAIN WINDOW
 # ─────────────────────────────────────────────────────────────────────────────
 $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$MainXAML.OuterXml)
-$Window = [System.Windows.Markup.XamlReader]::Load($reader)
+$script:Window = [System.Windows.Markup.XamlReader]::Load($reader)
 
-$btnAdd     = $Window.FindName('btnAdd')
-$btnEdit    = $Window.FindName('btnEdit')
-$btnRemove  = $Window.FindName('btnRemove')
-$btnEnable  = $Window.FindName('btnEnable')
-$btnDisable = $Window.FindName('btnDisable')
-$btnRefresh = $Window.FindName('btnRefresh')
-$lbRedirects = $Window.FindName('lbRedirects')
-$tbStatus   = $Window.FindName('tbStatus')
-$tbCount    = $Window.FindName('tbCount')
-$emptyState = $Window.FindName('emptyState')
-$svMain     = $Window.FindName('svMain')
+$script:btnAdd     = $script:Window.FindName('btnAdd')
+$script:btnEdit    = $script:Window.FindName('btnEdit')
+$script:btnRemove  = $script:Window.FindName('btnRemove')
+$script:btnEnable  = $script:Window.FindName('btnEnable')
+$script:btnDisable = $script:Window.FindName('btnDisable')
+$script:btnRefresh = $script:Window.FindName('btnRefresh')
+$script:lbRedirects = $script:Window.FindName('lbRedirects')
+$script:tbStatus   = $script:Window.FindName('tbStatus')
+$script:tbCount    = $script:Window.FindName('tbCount')
+$script:emptyState = $script:Window.FindName('emptyState')
+$script:svMain     = $script:Window.FindName('svMain')
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  UI HELPERS
@@ -719,24 +717,24 @@ function Get-Brush {
 
 function Set-Status {
     param([string]$Msg, [string]$Color = "#6B7280")
-    $tbStatus.Text       = $Msg
-    $tbStatus.Foreground = Get-Brush $Color
+    $script:tbStatus.Text       = $Msg
+    $script:tbStatus.Foreground = Get-Brush $Color
 }
 
 function Update-ButtonStates {
     $sel = $script:SelectedItem
     $hasSelection = $null -ne $sel
 
-    $btnEdit.IsEnabled   = $hasSelection
-    $btnRemove.IsEnabled = $hasSelection
+    $script:btnEdit.IsEnabled   = $hasSelection
+    $script:btnRemove.IsEnabled = $hasSelection
 
     if ($hasSelection) {
         $s = $sel.Status
-        $btnEnable.IsEnabled  = ($s -ne "Active")
-        $btnDisable.IsEnabled = ($s -eq "Active" -or $s -eq "Broken" -or $s -eq "WrongTarget")
+        $script:btnEnable.IsEnabled  = ($s -ne "Active")
+        $script:btnDisable.IsEnabled = ($s -eq "Active" -or $s -eq "Broken" -or $s -eq "WrongTarget")
     } else {
-        $btnEnable.IsEnabled  = $false
-        $btnDisable.IsEnabled = $false
+        $script:btnEnable.IsEnabled  = $false
+        $script:btnDisable.IsEnabled = $false
     }
 }
 
@@ -804,27 +802,29 @@ function New-RedirectCard {
     $nameRow.Children.Add($nameTb)
     $left.Children.Add($nameRow)
 
-    # Source path
-    $srcTb = New-Object System.Windows.Controls.TextBlock
-    $srcTb.FontSize   = 11
-    $srcTb.Foreground = Get-Brush "#666666"
-    $srcTb.Margin     = [System.Windows.Thickness]::new(18, 0, 0, 2)
-    $srcTb.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-    $srcRun = New-Object System.Windows.Documents.Run; $srcRun.Text = "Source  "; $srcRun.Foreground = Get-Brush "#4B5563"
-    $srcVal = New-Object System.Windows.Documents.Run; $srcVal.Text = $Item.Source; $srcVal.Foreground = Get-Brush "#6B7280"
-    $srcTb.Inlines.Add($srcRun); $srcTb.Inlines.Add($srcVal)
-    $left.Children.Add($srcTb)
+    # Source path row (two TextBlocks in a horizontal StackPanel - avoids the Inlines/Run API)
+    $srcRow = New-Object System.Windows.Controls.StackPanel
+    $srcRow.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+    $srcRow.Margin = [System.Windows.Thickness]::new(18, 0, 0, 2)
+    $srcLabel = New-Object System.Windows.Controls.TextBlock
+    $srcLabel.Text = "Source  "; $srcLabel.FontSize = 11; $srcLabel.Foreground = Get-Brush "#4B5563"
+    $srcValue = New-Object System.Windows.Controls.TextBlock
+    $srcValue.Text = $Item.Source; $srcValue.FontSize = 11; $srcValue.Foreground = Get-Brush "#6B7280"
+    $srcValue.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
+    $srcRow.Children.Add($srcLabel); $srcRow.Children.Add($srcValue)
+    $left.Children.Add($srcRow)
 
-    # Target path
-    $tgtTb = New-Object System.Windows.Controls.TextBlock
-    $tgtTb.FontSize   = 11
-    $tgtTb.Foreground = Get-Brush "#666666"
-    $tgtTb.Margin     = [System.Windows.Thickness]::new(18, 0, 0, 0)
-    $tgtTb.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-    $tgtRun = New-Object System.Windows.Documents.Run; $tgtRun.Text = "Target  "; $tgtRun.Foreground = Get-Brush "#4B5563"
-    $tgtVal = New-Object System.Windows.Documents.Run; $tgtVal.Text = $Item.Target; $tgtVal.Foreground = Get-Brush "#6B7280"
-    $tgtTb.Inlines.Add($tgtRun); $tgtTb.Inlines.Add($tgtVal)
-    $left.Children.Add($tgtTb)
+    # Target path row
+    $tgtRow = New-Object System.Windows.Controls.StackPanel
+    $tgtRow.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+    $tgtRow.Margin = [System.Windows.Thickness]::new(18, 0, 0, 0)
+    $tgtLabel = New-Object System.Windows.Controls.TextBlock
+    $tgtLabel.Text = "Target  "; $tgtLabel.FontSize = 11; $tgtLabel.Foreground = Get-Brush "#4B5563"
+    $tgtValue = New-Object System.Windows.Controls.TextBlock
+    $tgtValue.Text = $Item.Target; $tgtValue.FontSize = 11; $tgtValue.Foreground = Get-Brush "#6B7280"
+    $tgtValue.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
+    $tgtRow.Children.Add($tgtLabel); $tgtRow.Children.Add($tgtValue)
+    $left.Children.Add($tgtRow)
 
     [System.Windows.Controls.Grid]::SetColumn($left, 0)
     $grid.Children.Add($left)
@@ -856,41 +856,45 @@ function Update-ListView {
     $script:SelectedBorder = $null
 
     if ($script:Redirects.Count -eq 0) {
-        $emptyState.Visibility = [System.Windows.Visibility]::Visible
-        $svMain.Visibility     = [System.Windows.Visibility]::Collapsed
-        $tbCount.Text          = "0 redirects"
+        $script:emptyState.Visibility = [System.Windows.Visibility]::Visible
+        $script:svMain.Visibility     = [System.Windows.Visibility]::Collapsed
+        $script:tbCount.Text          = "0 redirects"
     } else {
-        $emptyState.Visibility = [System.Windows.Visibility]::Collapsed
-        $svMain.Visibility     = [System.Windows.Visibility]::Visible
+        $script:emptyState.Visibility = [System.Windows.Visibility]::Collapsed
+        $script:svMain.Visibility     = [System.Windows.Visibility]::Visible
 
         $active = 0
         foreach ($r in $script:Redirects) {
-            $status = Get-RedirectStatus -Source $r.Source -Target $r.Target
-            if ($status -eq "Active") { $active++ }
-            $meta = Get-StatusMeta -Status $status
+            try {
+                $status = Get-RedirectStatus -Source $r.Source -Target $r.Target
+                if ($status -eq "Active") { $active++ }
+                $meta = Get-StatusMeta -Status $status
 
-            $itemData = [PSCustomObject]@{
-                Name        = $r.Name
-                Source      = $r.Source
-                Target      = $r.Target
-                Status      = $status
-                StatusText  = $meta.Text
-                StatusColor = $meta.Color
-                StatusBG    = $meta.BG
-                Redirect    = $r
+                $itemData = [PSCustomObject]@{
+                    Name        = $r.Name
+                    Source      = $r.Source
+                    Target      = $r.Target
+                    Status      = $status
+                    StatusText  = $meta.Text
+                    StatusColor = $meta.Color
+                    StatusBG    = $meta.BG
+                    Redirect    = $r
+                }
+
+                $card = New-RedirectCard -Item $itemData
+                $lbi  = New-Object System.Windows.Controls.ListBoxItem
+                $lbi.Content = $card
+                $lbi.Tag     = $itemData
+                $lbi.Background = [System.Windows.Media.Brushes]::Transparent
+                $lbi.Padding    = [System.Windows.Thickness]::new(0)
+                $script:lbRedirects.Items.Add($lbi) | Out-Null
+            } catch {
+                Set-Status "Error displaying '$($r.Name)': $_" "#F87171"
             }
-
-            $card = New-RedirectCard -Item $itemData
-            $lbi  = New-Object System.Windows.Controls.ListBoxItem
-            $lbi.Content = $card
-            $lbi.Tag     = $itemData
-            $lbi.Background = [System.Windows.Media.Brushes]::Transparent
-            $lbi.Padding    = [System.Windows.Thickness]::new(0)
-            $lbRedirects.Items.Add($lbi) | Out-Null
         }
 
         $total = $script:Redirects.Count
-        $tbCount.Text = "$active / $total active"
+        $script:tbCount.Text = "$active / $total active"
     }
 
     Update-ButtonStates
@@ -906,7 +910,7 @@ function Show-EditDialog {
 
     $dlgReader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$EditXAML.OuterXml)
     $dlg = [System.Windows.Markup.XamlReader]::Load($dlgReader)
-    $dlg.Owner = $Window
+    $dlg.Owner = $script:Window
     $dlg.Title = if ($Existing) { "Edit Redirect - $($Existing.Name)" } else { "Add Redirect" }
 
     $txtName   = $dlg.FindName('txtName')
@@ -998,7 +1002,7 @@ function Show-EditDialog {
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Selection changed
-$lbRedirects.Add_SelectionChanged({
+$script:lbRedirects.Add_SelectionChanged({
     # Deselect old
     if ($script:SelectedBorder) {
         $script:SelectedBorder.Background    = Get-Brush "#1C1C1C"
@@ -1006,7 +1010,7 @@ $lbRedirects.Add_SelectionChanged({
         $script:SelectedBorder.BorderThickness = [System.Windows.Thickness]::new(1)
     }
 
-    $lbi = $lbRedirects.SelectedItem
+    $lbi = $script:lbRedirects.SelectedItem
     if ($lbi) {
         $card = $lbi.Content
         $card.Background    = Get-Brush "#1A2E45"
@@ -1023,18 +1027,18 @@ $lbRedirects.Add_SelectionChanged({
 })
 
 # Add
-$btnAdd.Add_Click({
+$script:btnAdd.Add_Click({
     $r = Show-EditDialog
     if ($r) {
         $script:Redirects += [PSCustomObject]@{ Name = $r.Name; Source = $r.Source; Target = $r.Target }
-        Save-Config
+        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
         Update-ListView
         Set-Status "Added: $($r.Name)" "#4ADE80"
     }
 })
 
 # Edit
-$btnEdit.Add_Click({
+$script:btnEdit.Add_Click({
     if (-not $script:SelectedItem) { return }
     $redirect = $script:SelectedItem.Redirect
     $r = Show-EditDialog -Existing $redirect
@@ -1042,14 +1046,14 @@ $btnEdit.Add_Click({
         $redirect.Name   = $r.Name
         $redirect.Source = $r.Source
         $redirect.Target = $r.Target
-        Save-Config
+        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
         Update-ListView
         Set-Status "Updated: $($r.Name)" "#4ADE80"
     }
 })
 
 # Remove
-$btnRemove.Add_Click({
+$script:btnRemove.Add_Click({
     if (-not $script:SelectedItem) { return }
     $name   = $script:SelectedItem.Name
     $status = $script:SelectedItem.Status
@@ -1067,14 +1071,14 @@ $btnRemove.Add_Click({
     if ($ans -eq [System.Windows.MessageBoxResult]::Yes) {
         $redirect = $script:SelectedItem.Redirect
         $script:Redirects = @($script:Redirects | Where-Object { $_ -ne $redirect })
-        Save-Config
+        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
         Update-ListView
         Set-Status "Removed: $name" "#FBBF24"
     }
 })
 
 # Enable
-$btnEnable.Add_Click({
+$script:btnEnable.Add_Click({
     if (-not $script:SelectedItem) { return }
     $redirect = $script:SelectedItem.Redirect
     Set-Status "Enabling '$($redirect.Name)'..." "#9CA3AF"
@@ -1089,7 +1093,7 @@ $btnEnable.Add_Click({
 })
 
 # Disable
-$btnDisable.Add_Click({
+$script:btnDisable.Add_Click({
     if (-not $script:SelectedItem) { return }
     $redirect = $script:SelectedItem.Redirect
     $ans = [System.Windows.MessageBox]::Show(
@@ -1108,23 +1112,25 @@ $btnDisable.Add_Click({
 })
 
 # Refresh
-$btnRefresh.Add_Click({
+$script:btnRefresh.Add_Click({
     Update-ListView
     Set-Status "Refreshed." "#6B7280"
 })
 
 # Keyboard shortcuts
-$Window.Add_KeyDown({
+$script:Window.Add_KeyDown({
     switch ($args[1].Key) {
-        ([System.Windows.Input.Key]::F5) { $btnRefresh.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent)) }
+        ([System.Windows.Input.Key]::F5) {
+            $script:btnRefresh.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+        }
         ([System.Windows.Input.Key]::Delete) {
-            if ($btnRemove.IsEnabled) {
-                $btnRemove.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+            if ($script:btnRemove.IsEnabled) {
+                $script:btnRemove.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
             }
         }
         ([System.Windows.Input.Key]::Enter) {
-            if ($btnEdit.IsEnabled) {
-                $btnEdit.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+            if ($script:btnEdit.IsEnabled) {
+                $script:btnEdit.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
             }
         }
     }
@@ -1135,4 +1141,4 @@ $Window.Add_KeyDown({
 # ─────────────────────────────────────────────────────────────────────────────
 Load-Config
 Update-ListView
-$Window.ShowDialog() | Out-Null
+$script:Window.ShowDialog() | Out-Null
