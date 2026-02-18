@@ -45,12 +45,22 @@ if (-not $_isAdmin -or -not $_isSTA) {
             "Administrator Required",
             [System.Windows.Forms.MessageBoxButtons]::YesNo,
             [System.Windows.Forms.MessageBoxIcon]::Warning)
-        if ($ans -ne [System.Windows.Forms.DialogResult]::Yes) { exit }
+        if ($ans -ne [System.Windows.Forms.DialogResult]::Yes) { return }
     }
-    # Re-launch with -STA and -Verb RunAs (elevation), then exit this instance
-    Start-Process PowerShell -Verb RunAs `
-        -ArgumentList "-STA -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    exit
+    # Re-launch with -STA and -Verb RunAs; use full path to avoid ShellExecute FILE_NOT_FOUND
+    # Use return (not exit) so the caller's terminal session stays alive
+    $_ps  = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $_arg = "-STA -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    try {
+        Start-Process -FilePath $_ps -Verb RunAs -ArgumentList $_arg
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Could not restart as Administrator:`n$_",
+            "Elevation Failed",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
+    }
+    return
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
