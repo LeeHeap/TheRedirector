@@ -19,11 +19,12 @@ Add-Type -AssemblyName System.Windows.Forms
 # ─────────────────────────────────────────────────────────────────────────────
 #  GLOBALS
 # ─────────────────────────────────────────────────────────────────────────────
-$script:Version    = "1.0.0"
-$script:ConfigPath = Join-Path $PSScriptRoot "config.json"
-$script:Redirects  = @()
+$script:Version      = "1.0.0"
+$script:ConfigPath   = Join-Path $PSScriptRoot "config.json"
+$script:Redirects    = @()
 $script:SelectedItem   = $null
 $script:SelectedBorder = $null
+$script:ListViewErrors = ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  ADMIN ELEVATION  (must happen before any WPF window is shown)
@@ -910,7 +911,8 @@ function Update-ListView {
                 $lbi.Padding    = [System.Windows.Thickness]::new(0)
                 $script:lbRedirects.Items.Add($lbi) | Out-Null
             } catch {
-                Set-Status "Error displaying '$($r.Name)': $_" "#F87171"
+                $script:ListViewErrors += "[$($r.Name)] $_`n"
+                "$(Get-Date -f 'HH:mm:ss') Card error [$($r.Name)]: $_" | Add-Content (Join-Path $env:TEMP "TheRedirector_debug.log")
             }
         }
 
@@ -1161,12 +1163,16 @@ $script:Window.Add_KeyDown({
 #  MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 Load-Config
+$script:ListViewErrors = ""
 Update-ListView
 if ($script:LoadError) {
     Set-Status "Config error: $script:LoadError" "#F87171"
 } elseif ($script:Redirects.Count -eq 0) {
     Set-Status "No redirects configured. Click Add to create one." "#9CA3AF"
+} elseif ($script:ListViewErrors) {
+    Set-Status "Render error - check %TEMP%\TheRedirector_debug.log: $($script:ListViewErrors.Trim())" "#F87171"
 } else {
-    Set-Status "Loaded $($script:Redirects.Count) redirect(s) from config." "#4ADE80"
+    $_lbCount = $script:lbRedirects.Items.Count
+    Set-Status "Loaded $($script:Redirects.Count) redirect(s) | $($_lbCount) rendered in list." "#4ADE80"
 }
 $script:Window.ShowDialog() | Out-Null
