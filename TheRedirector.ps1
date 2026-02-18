@@ -509,11 +509,8 @@ function Disable-Redirect {
                            FontSize="12" Foreground="#3D3D3D" HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Redirect list -->
-            <ScrollViewer x:Name="svMain" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <ListBox x:Name="lbRedirects" Margin="16,14,16,14"/>
-            </ScrollViewer>
+            <!-- Redirect list (ListBox manages its own internal ScrollViewer) -->
+            <ListBox x:Name="lbRedirects" Margin="16,14,16,14"/>
         </Grid>
 
         <!-- ══════════════ STATUS BAR ══════════════ -->
@@ -724,7 +721,6 @@ $script:lbRedirects = $script:Window.FindName('lbRedirects')
 $script:tbStatus   = $script:Window.FindName('tbStatus')
 $script:tbCount    = $script:Window.FindName('tbCount')
 $script:emptyState = $script:Window.FindName('emptyState')
-$script:svMain     = $script:Window.FindName('svMain')
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  UI HELPERS
@@ -879,12 +875,12 @@ function Update-ListView {
     $script:SelectedBorder = $null
 
     if ($script:Redirects.Count -eq 0) {
-        $script:emptyState.Visibility = [System.Windows.Visibility]::Visible
-        $script:svMain.Visibility     = [System.Windows.Visibility]::Collapsed
-        $script:tbCount.Text          = "0 redirects"
+        $script:emptyState.Visibility  = [System.Windows.Visibility]::Visible
+        $script:lbRedirects.Visibility = [System.Windows.Visibility]::Collapsed
+        $script:tbCount.Text           = "0 redirects"
     } else {
-        $script:emptyState.Visibility = [System.Windows.Visibility]::Collapsed
-        $script:svMain.Visibility     = [System.Windows.Visibility]::Visible
+        $script:emptyState.Visibility  = [System.Windows.Visibility]::Collapsed
+        $script:lbRedirects.Visibility = [System.Windows.Visibility]::Visible
 
         $active = 0
         foreach ($r in $script:Redirects) {
