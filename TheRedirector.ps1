@@ -417,6 +417,7 @@ function Disable-Redirect {
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="False"/>
         </Style>
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
