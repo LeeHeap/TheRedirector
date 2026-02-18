@@ -57,19 +57,27 @@ if (-not $_isAdmin -or -not $_isSTA) {
 #  CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 function Load-Config {
+    $script:LoadError = $null
+    $log = Join-Path $env:TEMP "TheRedirector_debug.log"
+    "$(Get-Date -f 'HH:mm:ss') Load-Config start. ConfigPath=[$script:ConfigPath]" | Add-Content $log
+
     if (Test-Path $script:ConfigPath) {
         try {
             $json = Get-Content $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
             $script:Redirects = @($json.redirects | ForEach-Object {
                 [PSCustomObject]@{ Name = $_.name; Source = $_.source; Target = $_.target }
             })
+            "$(Get-Date -f 'HH:mm:ss') Loaded $($script:Redirects.Count) redirect(s)." | Add-Content $log
         } catch {
             $script:Redirects = @()
-            Write-Warning "Failed to load config: $_"
+            $script:LoadError = "Parse error: $_"
+            "$(Get-Date -f 'HH:mm:ss') ERROR: $script:LoadError" | Add-Content $log
         }
     } else {
         $script:Redirects = @()
-        Save-Config
+        $script:LoadError = "Config not found: $script:ConfigPath"
+        "$(Get-Date -f 'HH:mm:ss') Config not found. Creating blank." | Add-Content $log
+        try { Save-Config } catch {}
     }
 }
 
@@ -1144,4 +1152,11 @@ $script:Window.Add_KeyDown({
 # ─────────────────────────────────────────────────────────────────────────────
 Load-Config
 Update-ListView
+if ($script:LoadError) {
+    Set-Status "Config error: $script:LoadError" "#F87171"
+} elseif ($script:Redirects.Count -eq 0) {
+    Set-Status "No redirects configured. Click Add to create one." "#9CA3AF"
+} else {
+    Set-Status "Loaded $($script:Redirects.Count) redirect(s) from config." "#4ADE80"
+}
 $script:Window.ShowDialog() | Out-Null
