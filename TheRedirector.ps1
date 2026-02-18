@@ -411,27 +411,6 @@ function Disable-Redirect {
             </Setter>
         </Style>
 
-        <!-- ── ListBox ── -->
-        <Style TargetType="ListBox">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="False"/>
-        </Style>
-        <Style TargetType="ListBoxItem">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <ContentPresenter/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
     </Window.Resources>
 
@@ -509,8 +488,11 @@ function Disable-Redirect {
                            FontSize="12" Foreground="#3D3D3D" HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Redirect list (ListBox manages its own internal ScrollViewer) -->
-            <ListBox x:Name="lbRedirects" Margin="16,14,16,14"/>
+            <!-- Redirect list -->
+            <ScrollViewer x:Name="svMain" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="spCards" Margin="16,14,16,14"/>
+            </ScrollViewer>
         </Grid>
 
         <!-- ══════════════ STATUS BAR ══════════════ -->
@@ -717,7 +699,8 @@ $script:btnRemove  = $script:Window.FindName('btnRemove')
 $script:btnEnable  = $script:Window.FindName('btnEnable')
 $script:btnDisable = $script:Window.FindName('btnDisable')
 $script:btnRefresh = $script:Window.FindName('btnRefresh')
-$script:lbRedirects = $script:Window.FindName('lbRedirects')
+$script:svMain     = $script:Window.FindName('svMain')
+$script:spCards    = $script:Window.FindName('spCards')
 $script:tbStatus   = $script:Window.FindName('tbStatus')
 $script:tbCount    = $script:Window.FindName('tbCount')
 $script:emptyState = $script:Window.FindName('emptyState')
@@ -786,6 +769,22 @@ function New-RedirectCard {
             $s.Background   = Get-Brush "#1C1C1C"
             $s.BorderBrush  = Get-Brush "#282828"
         }
+    })
+
+    # Click to select
+    $card.Add_MouseLeftButtonDown({
+        $s = $args[0]
+        if ($script:SelectedBorder -and $script:SelectedBorder -ne $s) {
+            $script:SelectedBorder.Background      = Get-Brush "#1C1C1C"
+            $script:SelectedBorder.BorderBrush     = Get-Brush "#282828"
+            $script:SelectedBorder.BorderThickness = [System.Windows.Thickness]::new(1)
+        }
+        $s.Background      = Get-Brush "#1A2E45"
+        $s.BorderBrush     = Get-Brush "#0078D4"
+        $s.BorderThickness = [System.Windows.Thickness]::new(1)
+        $script:SelectedBorder = $s
+        $script:SelectedItem   = $s.Tag
+        Update-ButtonStates
     })
 
     # Main grid: left info | right badge
@@ -870,17 +869,17 @@ function New-RedirectCard {
 }
 
 function Update-ListView {
-    $script:lbRedirects.Items.Clear()
+    $script:spCards.Children.Clear()
     $script:SelectedItem   = $null
     $script:SelectedBorder = $null
 
     if ($script:Redirects.Count -eq 0) {
-        $script:emptyState.Visibility  = [System.Windows.Visibility]::Visible
-        $script:lbRedirects.Visibility = [System.Windows.Visibility]::Collapsed
-        $script:tbCount.Text           = "0 redirects"
+        $script:emptyState.Visibility = [System.Windows.Visibility]::Visible
+        $script:svMain.Visibility     = [System.Windows.Visibility]::Collapsed
+        $script:tbCount.Text          = "0 redirects"
     } else {
-        $script:emptyState.Visibility  = [System.Windows.Visibility]::Collapsed
-        $script:lbRedirects.Visibility = [System.Windows.Visibility]::Visible
+        $script:emptyState.Visibility = [System.Windows.Visibility]::Collapsed
+        $script:svMain.Visibility     = [System.Windows.Visibility]::Visible
 
         $active = 0
         foreach ($r in $script:Redirects) {
@@ -901,12 +900,7 @@ function Update-ListView {
                 }
 
                 $card = New-RedirectCard -Item $itemData
-                $lbi  = New-Object System.Windows.Controls.ListBoxItem
-                $lbi.Content = $card
-                $lbi.Tag     = $itemData
-                $lbi.Background = [System.Windows.Media.Brushes]::Transparent
-                $lbi.Padding    = [System.Windows.Thickness]::new(0)
-                $script:lbRedirects.Items.Add($lbi) | Out-Null
+                $script:spCards.Children.Add($card) | Out-Null
             } catch {
                 $script:ListViewErrors += "[$($r.Name)] $_`n"
                 "$(Get-Date -f 'HH:mm:ss') Card error [$($r.Name)]: $_" | Add-Content (Join-Path $env:TEMP "TheRedirector_debug.log")
@@ -1020,31 +1014,6 @@ function Show-EditDialog {
 # ─────────────────────────────────────────────────────────────────────────────
 #  EVENT HANDLERS
 # ─────────────────────────────────────────────────────────────────────────────
-
-# Selection changed
-$script:lbRedirects.Add_SelectionChanged({
-    # Deselect old
-    if ($script:SelectedBorder) {
-        $script:SelectedBorder.Background    = Get-Brush "#1C1C1C"
-        $script:SelectedBorder.BorderBrush   = Get-Brush "#282828"
-        $script:SelectedBorder.BorderThickness = [System.Windows.Thickness]::new(1)
-    }
-
-    $lbi = $script:lbRedirects.SelectedItem
-    if ($lbi) {
-        $card = $lbi.Content
-        $card.Background    = Get-Brush "#1A2E45"
-        $card.BorderBrush   = Get-Brush "#0078D4"
-        $card.BorderThickness = [System.Windows.Thickness]::new(1)
-        $script:SelectedBorder = $card
-        $script:SelectedItem   = $lbi.Tag
-    } else {
-        $script:SelectedBorder = $null
-        $script:SelectedItem   = $null
-    }
-
-    Update-ButtonStates
-})
 
 # Add
 $script:btnAdd.Add_Click({
@@ -1169,7 +1138,7 @@ if ($script:LoadError) {
 } elseif ($script:ListViewErrors) {
     Set-Status "Render error - check %TEMP%\TheRedirector_debug.log: $($script:ListViewErrors.Trim())" "#F87171"
 } else {
-    $_lbCount = $script:lbRedirects.Items.Count
+    $_lbCount = $script:spCards.Children.Count
     Set-Status "Loaded $($script:Redirects.Count) redirect(s) | $($_lbCount) rendered in list." "#4ADE80"
 }
 $script:Window.ShowDialog() | Out-Null
