@@ -34,19 +34,22 @@ function Test-IsAdmin {
         [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-if (-not (Test-IsAdmin)) {
-    # Show a plain Win32 message box (WPF not loaded yet)
-    Add-Type -AssemblyName System.Windows.Forms
-    $ans = [System.Windows.Forms.MessageBox]::Show(
-        "TheRedirector needs administrator privileges to create and manage junction points.`n`nRestart as Administrator?",
-        "Administrator Required",
-        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]::Warning)
+$_isSTA   = [System.Threading.Thread]::CurrentThread.GetApartmentState() -eq [System.Threading.ApartmentState]::STA
+$_isAdmin = Test-IsAdmin
 
-    if ($ans -eq [System.Windows.Forms.DialogResult]::Yes) {
-        Start-Process PowerShell -Verb RunAs `
-            -ArgumentList "-STA -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+if (-not $_isAdmin -or -not $_isSTA) {
+    if (-not $_isAdmin) {
+        # Show a plain Win32 message box (no WPF window yet)
+        $ans = [System.Windows.Forms.MessageBox]::Show(
+            "TheRedirector needs administrator privileges to create and manage junction points.`n`nRestart as Administrator?",
+            "Administrator Required",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning)
+        if ($ans -ne [System.Windows.Forms.DialogResult]::Yes) { exit }
     }
+    # Re-launch with -STA and -Verb RunAs (elevation), then exit this instance
+    Start-Process PowerShell -Verb RunAs `
+        -ArgumentList "-STA -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     exit
 }
 
@@ -851,7 +854,7 @@ function New-RedirectCard {
 }
 
 function Update-ListView {
-    $lbRedirects.Items.Clear()
+    $script:lbRedirects.Items.Clear()
     $script:SelectedItem   = $null
     $script:SelectedBorder = $null
 
