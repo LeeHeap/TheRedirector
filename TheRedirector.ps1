@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     TheRedirector - NTFS Junction Point Manager
@@ -157,7 +157,7 @@ function Enable-Redirect {
             if ($targetExists) {
                 $ans = [System.Windows.MessageBox]::Show(
                     "The source folder has existing data, and the target folder already exists too.`n`nSource: $source`nTarget: $target`n`nTo proceed, the source folder must be deleted (your data lives in the target).`n`nDelete the source folder and create the junction?",
-                    "Data Conflict – Confirm",
+                    "Data Conflict - Confirm",
                     [System.Windows.MessageBoxButton]::YesNo,
                     [System.Windows.MessageBoxImage]::Warning)
 
@@ -171,7 +171,7 @@ function Enable-Redirect {
                 }
             } else {
                 $ans = [System.Windows.MessageBox]::Show(
-                    "The source folder contains data. What should happen to it?`n`nSource: $source`nTarget: $target`n`nYes  – Move data to the target location`nNo   – Delete source data (data will be lost!)`nCancel – Do nothing",
+                    "The source folder contains data. What should happen to it?`n`nSource: $source`nTarget: $target`n`nYes    - Move data to the target location`nNo     - Delete source data (data will be lost!)`nCancel - Do nothing",
                     "Existing Data Found",
                     [System.Windows.MessageBoxButton]::YesNoCancel,
                     [System.Windows.MessageBoxImage]::Question)
@@ -907,7 +907,7 @@ function Show-EditDialog {
     $dlgReader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$EditXAML.OuterXml)
     $dlg = [System.Windows.Markup.XamlReader]::Load($dlgReader)
     $dlg.Owner = $Window
-    $dlg.Title = if ($Existing) { "Edit Redirect — $($Existing.Name)" } else { "Add Redirect" }
+    $dlg.Title = if ($Existing) { "Edit Redirect - $($Existing.Name)" } else { "Add Redirect" }
 
     $txtName   = $dlg.FindName('txtName')
     $txtSource = $dlg.FindName('txtSource')
@@ -1077,7 +1077,7 @@ $btnRemove.Add_Click({
 $btnEnable.Add_Click({
     if (-not $script:SelectedItem) { return }
     $redirect = $script:SelectedItem.Redirect
-    Set-Status "Enabling '$($redirect.Name)'…" "#9CA3AF"
+    Set-Status "Enabling '$($redirect.Name)'..." "#9CA3AF"
     $ok = Enable-Redirect -Redirect $redirect
     if ($ok) {
         Update-ListView
@@ -1099,7 +1099,7 @@ $btnDisable.Add_Click({
         [System.Windows.MessageBoxImage]::Question)
 
     if ($ans -eq [System.Windows.MessageBoxResult]::Yes) {
-        Set-Status "Disabling '$($redirect.Name)'…" "#9CA3AF"
+        Set-Status "Disabling '$($redirect.Name)'..." "#9CA3AF"
         $ok = Disable-Redirect -Redirect $redirect
         Update-ListView
         Set-Status $(if ($ok) { "Disabled: $($redirect.Name)" } else { "Disable failed." }) `
