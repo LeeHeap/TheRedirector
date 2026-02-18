@@ -809,7 +809,7 @@ function New-RedirectCard {
     $dot.Background    = Get-Brush $meta.Color
     $dot.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $dot.Margin = [System.Windows.Thickness]::new(0,0,10,0)
-    $nameRow.Children.Add($dot)
+    [void]$nameRow.Children.Add($dot)
 
     $nameTb = New-Object System.Windows.Controls.TextBlock
     $nameTb.Text       = $Item.Name
@@ -817,8 +817,8 @@ function New-RedirectCard {
     $nameTb.FontWeight = [System.Windows.FontWeights]::SemiBold
     $nameTb.Foreground = Get-Brush "#EFEFEF"
     $nameTb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
-    $nameRow.Children.Add($nameTb)
-    $left.Children.Add($nameRow)
+    [void]$nameRow.Children.Add($nameTb)
+    [void]$left.Children.Add($nameRow)
 
     # Source path row (two TextBlocks in a horizontal StackPanel - avoids the Inlines/Run API)
     $srcRow = New-Object System.Windows.Controls.StackPanel
@@ -829,8 +829,8 @@ function New-RedirectCard {
     $srcValue = New-Object System.Windows.Controls.TextBlock
     $srcValue.Text = $Item.Source; $srcValue.FontSize = 11; $srcValue.Foreground = Get-Brush "#6B7280"
     $srcValue.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-    $srcRow.Children.Add($srcLabel); $srcRow.Children.Add($srcValue)
-    $left.Children.Add($srcRow)
+    [void]$srcRow.Children.Add($srcLabel); [void]$srcRow.Children.Add($srcValue)
+    [void]$left.Children.Add($srcRow)
 
     # Target path row
     $tgtRow = New-Object System.Windows.Controls.StackPanel
@@ -841,11 +841,11 @@ function New-RedirectCard {
     $tgtValue = New-Object System.Windows.Controls.TextBlock
     $tgtValue.Text = $Item.Target; $tgtValue.FontSize = 11; $tgtValue.Foreground = Get-Brush "#6B7280"
     $tgtValue.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-    $tgtRow.Children.Add($tgtLabel); $tgtRow.Children.Add($tgtValue)
-    $left.Children.Add($tgtRow)
+    [void]$tgtRow.Children.Add($tgtLabel); [void]$tgtRow.Children.Add($tgtValue)
+    [void]$left.Children.Add($tgtRow)
 
     [System.Windows.Controls.Grid]::SetColumn($left, 0)
-    $grid.Children.Add($left)
+    [void]$grid.Children.Add($left)
 
     # ── Right: status badge ──
     $badge = New-Object System.Windows.Controls.Border
@@ -862,7 +862,7 @@ function New-RedirectCard {
     $badge.Child = $badgeTb
 
     [System.Windows.Controls.Grid]::SetColumn($badge, 1)
-    $grid.Children.Add($badge)
+    [void]$grid.Children.Add($badge)
 
     $card.Child = $grid
     return $card
@@ -900,7 +900,7 @@ function Update-ListView {
                 }
 
                 $card = New-RedirectCard -Item $itemData
-                $script:spCards.Children.Add($card) | Out-Null
+                [void]$script:spCards.Children.Add($card)
             } catch {
                 $script:ListViewErrors += "[$($r.Name)] $_`n"
                 "$(Get-Date -f 'HH:mm:ss') Card error [$($r.Name)]: $_" | Add-Content (Join-Path $env:TEMP "TheRedirector_debug.log")
