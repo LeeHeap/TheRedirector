@@ -994,22 +994,18 @@ function Show-EditDialog {
         [string]$Type = "Folder"             # "File" or "Folder"
     )
 
+    $log = Join-Path $env:TEMP "TheRedirector_debug.log"
+    "$(Get-Date -f 'HH:mm:ss') Show-EditDialog start. Type=$Type Existing=$($Existing -ne $null)" | Add-Content $log
+
+    try {
+
     $dlgReader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$EditXAML.OuterXml)
     $dlg = [System.Windows.Markup.XamlReader]::Load($dlgReader)
     $dlg.Owner = $script:Window
     $effectiveType = if ($Existing) { $Existing.Type } else { $Type }
     $dlg.Title = if ($Existing) { "Edit $effectiveType Redirect - $($Existing.Name)" } else { "Add $effectiveType Redirect" }
 
-    # Add a read-only type label at the top of the dialog
-    $dlgGrid = $dlg.Content
-    $typeLbl = New-Object System.Windows.Controls.TextBlock
-    $typeLbl.Text       = "Type: $effectiveType"
-    $typeLbl.FontSize   = 11
-    $typeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#6B7280")
-    $typeLbl.Margin     = [System.Windows.Thickness]::new(0, 0, 0, 4)
-    $typeLbl.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
-    [System.Windows.Controls.Grid]::SetRow($typeLbl, 0)
-    [void]$dlgGrid.Children.Add($typeLbl)
+    "$(Get-Date -f 'HH:mm:ss') Dialog created. effectiveType=$effectiveType" | Add-Content $log
 
     $txtName   = $dlg.FindName('txtName')
     $txtSource = $dlg.FindName('txtSource')
@@ -1019,13 +1015,15 @@ function Show-EditDialog {
     $btnSave   = $dlg.FindName('btnSave')
     $btnCan    = $dlg.FindName('btnCancel')
 
+    "$(Get-Date -f 'HH:mm:ss') FindName done. btnSave=$($btnSave -ne $null) btnCan=$($btnCan -ne $null)" | Add-Content $log
+
     if ($Existing) {
         $txtName.Text   = $Existing.Name
         $txtSource.Text = $Existing.Source
         $txtTarget.Text = $Existing.Target
     }
 
-    $script:DlgResult = $null
+    $dlg.Tag = $null   # used to pass result from Save handler (closure can't write to $script: scope)
 
     # Note: .GetNewClosure() is required so WPF event handlers (called from the
     # WPF message loop, outside PowerShell's call stack) can see local variables
@@ -1076,7 +1074,10 @@ function Show-EditDialog {
         }
     }.GetNewClosure())
 
+    "$(Get-Date -f 'HH:mm:ss') Registering Save handler..." | Add-Content $log
     $btnSave.Add_Click({
+        $saveLog = Join-Path $env:TEMP "TheRedirector_debug.log"
+        "$(Get-Date -f 'HH:mm:ss') SAVE CLICKED. effectiveType=$effectiveType" | Add-Content $saveLog
         try {
             $n = $txtName.Text.Trim()
             $s = $txtSource.Text.Trim()
@@ -1105,15 +1106,17 @@ function Show-EditDialog {
                 }
             }
 
-            $script:DlgResult = [PSCustomObject]@{ Name = $n; Type = $effectiveType; Source = $s; Target = $t }
+            "$(Get-Date -f 'HH:mm:ss') Validation passed. Setting DlgResult." | Add-Content $saveLog
+            $dlg.Tag = [PSCustomObject]@{ Name = $n; Type = $effectiveType; Source = $s; Target = $t }
             $dlg.DialogResult = $true
             $dlg.Close()
         } catch {
-            "$(Get-Date -f 'HH:mm:ss') Save handler error: $_" | Add-Content (Join-Path $env:TEMP "TheRedirector_debug.log")
+            "$(Get-Date -f 'HH:mm:ss') Save handler error: $_" | Add-Content $saveLog
             [System.Windows.MessageBox]::Show("Save error:`n$_", "Error",
                 [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
         }
     }.GetNewClosure())
+    "$(Get-Date -f 'HH:mm:ss') Save handler registered." | Add-Content $log
 
     $btnCan.Add_Click({ $dlg.DialogResult = $false; $dlg.Close() }.GetNewClosure())
 
@@ -1124,8 +1127,17 @@ function Show-EditDialog {
         }
     }.GetNewClosure())
 
+    "$(Get-Date -f 'HH:mm:ss') All handlers registered. Opening dialog..." | Add-Content $log
     $dlg.ShowDialog() | Out-Null
-    return $script:DlgResult
+    "$(Get-Date -f 'HH:mm:ss') Dialog closed. DlgResult=$($dlg.Tag -ne $null)" | Add-Content $log
+    return $dlg.Tag
+
+    } catch {
+        "$(Get-Date -f 'HH:mm:ss') Show-EditDialog FATAL: $_" | Add-Content $log
+        [System.Windows.MessageBox]::Show("Dialog error:`n$_", "Error",
+            [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        return $null
+    }
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
