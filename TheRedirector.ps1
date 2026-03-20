@@ -1077,36 +1077,42 @@ function Show-EditDialog {
     }.GetNewClosure())
 
     $btnSave.Add_Click({
-        $n = $txtName.Text.Trim()
-        $s = $txtSource.Text.Trim()
-        $t = $txtTarget.Text.Trim()
+        try {
+            $n = $txtName.Text.Trim()
+            $s = $txtSource.Text.Trim()
+            $t = $txtTarget.Text.Trim()
 
-        if (-not $n) {
-            [System.Windows.MessageBox]::Show("Please enter a display name.", "Required",
-                [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
-        }
-        if (-not $s) {
-            [System.Windows.MessageBox]::Show("Please enter a source path.", "Required",
-                [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
-        }
-        if (-not $t) {
-            [System.Windows.MessageBox]::Show("Please enter a target path.", "Required",
-                [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
-        }
-
-        # Duplicate name check (only for Add, or if name changed)
-        $isNameChange = (-not $Existing) -or ($Existing.Name -ne $n)
-        if ($isNameChange) {
-            $dup = $script:Redirects | Where-Object { $_.Name -ieq $n }
-            if ($dup) {
-                [System.Windows.MessageBox]::Show("A redirect named '$n' already exists.", "Duplicate Name",
+            if (-not $n) {
+                [System.Windows.MessageBox]::Show("Please enter a display name.", "Required",
                     [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
             }
-        }
+            if (-not $s) {
+                [System.Windows.MessageBox]::Show("Please enter a source path.", "Required",
+                    [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
+            }
+            if (-not $t) {
+                [System.Windows.MessageBox]::Show("Please enter a target path.", "Required",
+                    [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
+            }
 
-        $script:DlgResult = [PSCustomObject]@{ Name = $n; Type = $effectiveType; Source = $s; Target = $t }
-        $dlg.DialogResult = $true
-        $dlg.Close()
+            # Duplicate name check (only for Add, or if name changed)
+            $isNameChange = (-not $Existing) -or ($Existing.Name -ne $n)
+            if ($isNameChange) {
+                $dup = $script:Redirects | Where-Object { $_.Name -ieq $n }
+                if ($dup) {
+                    [System.Windows.MessageBox]::Show("A redirect named '$n' already exists.", "Duplicate Name",
+                        [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null; return
+                }
+            }
+
+            $script:DlgResult = [PSCustomObject]@{ Name = $n; Type = $effectiveType; Source = $s; Target = $t }
+            $dlg.DialogResult = $true
+            $dlg.Close()
+        } catch {
+            "$(Get-Date -f 'HH:mm:ss') Save handler error: $_" | Add-Content (Join-Path $env:TEMP "TheRedirector_debug.log")
+            [System.Windows.MessageBox]::Show("Save error:`n$_", "Error",
+                [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
+        }
     }.GetNewClosure())
 
     $btnCan.Add_Click({ $dlg.DialogResult = $false; $dlg.Close() }.GetNewClosure())
