@@ -110,25 +110,45 @@ function Save-Config {
 #  JUNCTION / STATUS HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 function Get-RedirectStatus {
-    param([string]$Source, [string]$Target)
+    param([string]$Source, [string]$Target, [string]$Type = "Folder")
 
     $item = Get-Item -LiteralPath $Source -Force -ErrorAction SilentlyContinue
     if (-not $item) { return "Inactive" }
 
-    if ($item.LinkType -eq "Junction") {
-        $jt = $item.Target  # array of strings; take first
-        if ($jt) { $jt = $jt[0] }
-        try {
-            $normJt  = [System.IO.Path]::GetFullPath($jt).TrimEnd('\')
-            $normTgt = [System.IO.Path]::GetFullPath($Target).TrimEnd('\')
-            if ($normJt -ieq $normTgt) {
-                return $(if (Test-Path -LiteralPath $Target) { "Active" } else { "Broken" })
-            } else {
-                return "WrongTarget"
-            }
-        } catch { return "Broken" }
+    if ($Type -eq "File") {
+        # File redirect: check for symbolic link (not directory)
+        if ($item.LinkType -eq "SymbolicLink" -and -not $item.PSIsContainer) {
+            $lt = $item.Target
+            if ($lt) { $lt = $lt[0] }
+            try {
+                $normLt  = [System.IO.Path]::GetFullPath($lt).TrimEnd('\')
+                $normTgt = [System.IO.Path]::GetFullPath($Target).TrimEnd('\')
+                if ($normLt -ieq $normTgt) {
+                    return $(if (Test-Path -LiteralPath $Target) { "Active" } else { "Broken" })
+                } else {
+                    return "WrongTarget"
+                }
+            } catch { return "Broken" }
+        } else {
+            return "Unlinked"   # regular file, directory, or wrong link type
+        }
     } else {
-        return "Unlinked"   # exists as a normal folder
+        # Folder redirect: check for junction (existing logic)
+        if ($item.LinkType -eq "Junction") {
+            $jt = $item.Target
+            if ($jt) { $jt = $jt[0] }
+            try {
+                $normJt  = [System.IO.Path]::GetFullPath($jt).TrimEnd('\')
+                $normTgt = [System.IO.Path]::GetFullPath($Target).TrimEnd('\')
+                if ($normJt -ieq $normTgt) {
+                    return $(if (Test-Path -LiteralPath $Target) { "Active" } else { "Broken" })
+                } else {
+                    return "WrongTarget"
+                }
+            } catch { return "Broken" }
+        } else {
+            return "Unlinked"   # regular folder, file, or wrong link type
+        }
     }
 }
 
@@ -149,7 +169,7 @@ function Enable-Redirect {
 
     $source = $Redirect.Source
     $target = $Redirect.Target
-    $status = Get-RedirectStatus -Source $source -Target $target
+    $status = Get-RedirectStatus -Source $source -Target $target -Type $Redirect.Type
 
     switch ($status) {
         "Active" {
@@ -266,7 +286,7 @@ function Disable-Redirect {
     param($Redirect)
 
     $source = $Redirect.Source
-    $status = Get-RedirectStatus -Source $source -Target $Redirect.Target
+    $status = Get-RedirectStatus -Source $source -Target $Redirect.Target -Type $Redirect.Type
 
     if ($status -eq "Inactive") {
         [System.Windows.MessageBox]::Show(
@@ -889,7 +909,7 @@ function Update-ListView {
         $active = 0
         foreach ($r in $script:Redirects) {
             try {
-                $status = Get-RedirectStatus -Source $r.Source -Target $r.Target
+                $status = Get-RedirectStatus -Source $r.Source -Target $r.Target -Type $r.Type
                 if ($status -eq "Active") { $active++ }
                 $meta = Get-StatusMeta -Status $status
 
