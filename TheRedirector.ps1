@@ -853,10 +853,25 @@ function New-RedirectCard {
     $left = New-Object System.Windows.Controls.StackPanel
     $left.Orientation = [System.Windows.Controls.Orientation]::Vertical
 
-    # Status dot + name on one line
+    # Type icon + status dot + name on one line
     $nameRow = New-Object System.Windows.Controls.StackPanel
     $nameRow.Orientation = [System.Windows.Controls.Orientation]::Horizontal
     $nameRow.Margin = [System.Windows.Thickness]::new(0,0,0,6)
+
+    # Type icon
+    $typeIcon = New-Object System.Windows.Controls.TextBlock
+    $typeIcon.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe UI Emoji")
+    if ($Item.Type -eq "File") {
+        $typeIcon.Text       = [char]0x1F4C4
+        $typeIcon.Foreground = Get-Brush "#A78BFA"
+    } else {
+        $typeIcon.Text       = [char]0x1F4C1
+        $typeIcon.Foreground = Get-Brush "#60A5FA"
+    }
+    $typeIcon.FontSize   = 12
+    $typeIcon.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+    $typeIcon.Margin = [System.Windows.Thickness]::new(0,0,8,0)
+    [void]$nameRow.Children.Add($typeIcon)
 
     $dot = New-Object System.Windows.Controls.Border
     $dot.Width  = 8; $dot.Height = 8
@@ -945,6 +960,7 @@ function Update-ListView {
 
                 $itemData = [PSCustomObject]@{
                     Name        = $r.Name
+                    Type        = $r.Type
                     Source      = $r.Source
                     Target      = $r.Target
                     Status      = $status
