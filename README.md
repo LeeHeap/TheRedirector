@@ -1,6 +1,6 @@
 # TheRedirector
 
-A sleek, dark-themed GUI for managing **NTFS junction points** on Windows. Use it to redirect application settings folders to a synced location (OneDrive, Dropbox, etc.) while keeping apps completely unaware.
+A sleek, dark-themed GUI for managing **NTFS junction points** and **symbolic links** on Windows. Use it to redirect application settings folders — or individual config files — to a synced location (OneDrive, Dropbox, etc.) while keeping apps completely unaware.
 
 ![Status badges: Active, Not Linked, Inactive, Broken](docs/screenshot.png)
 
@@ -8,9 +8,12 @@ A sleek, dark-themed GUI for managing **NTFS junction points** on Windows. Use i
 
 ## How it works
 
-Windows NTFS supports **junction points** — a type of directory symlink that makes one folder path transparently point to another location. When you redirect, say, `%AppData%\PrusaSlicer` to `OneDrive\Synced Settings\PrusaSlicer`, the app reads and writes to its normal path but the data actually lives on OneDrive.
+Windows NTFS supports **junction points** (directory symlinks) and **symbolic links** (file symlinks) that make one path transparently point to another location. When you redirect, say, `%AppData%\PrusaSlicer` to `OneDrive\Synced Settings\PrusaSlicer`, the app reads and writes to its normal path but the data actually lives on OneDrive.
 
-TheRedirector manages a config file of `name → source → target` mappings and lets you enable or disable each redirect with a single click.
+TheRedirector manages a config file of `name → type → source → target` mappings and lets you enable or disable each redirect with a single click. It supports both:
+
+- **Folder redirects** — using NTFS junction points (same as before)
+- **File redirects** — using NTFS symbolic links (new in v1.1)
 
 ---
 
@@ -18,7 +21,7 @@ TheRedirector manages a config file of `name → source → target` mappings and
 
 - **Windows 10 / 11**
 - **PowerShell 5.1** or later (built-in on modern Windows)
-- **Administrator privileges** (required to create/remove NTFS junction points)
+- **Administrator privileges** (required to create/remove junction points and symbolic links)
 
 ---
 
@@ -27,7 +30,7 @@ TheRedirector manages a config file of `name → source → target` mappings and
 ### 1. Clone or download
 
 ```
-git clone https://github.com/yourusername/TheRedirector.git
+git clone https://github.com/LeeHeap/TheRedirector.git
 ```
 
 ### 2. Run the app
@@ -44,7 +47,7 @@ PowerShell.exe -STA -NoProfile -ExecutionPolicy Bypass -File "TheRedirector.ps1"
 
 ### 3. Create your config
 
-On first run, a blank `config.json` is created. Use the GUI to add your redirects, or copy `config.example.json` to `config.json` and edit the paths.
+On first run, a blank `config.json` is created. Use the GUI to add folder or file redirects, or copy `config.example.json` to `config.json` and edit the paths. The example config includes both folder and file redirect entries.
 
 ---
 
@@ -57,20 +60,28 @@ The config is a simple JSON file stored alongside the script:
   "redirects": [
     {
       "name": "PrusaSlicer",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Roaming\\PrusaSlicer",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\PrusaSlicer"
+    },
+    {
+      "name": "SSH Config",
+      "type": "File",
+      "source": "C:\\Users\\Lee\\.ssh\\config",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\.ssh\\config"
     }
   ]
 }
 ```
 
-| Field    | Description                                              |
-|----------|----------------------------------------------------------|
-| `name`   | Friendly display name shown in the GUI                  |
-| `source` | Where the application expects its data (original path)  |
-| `target` | Where the data actually lives (your synced folder)       |
+| Field    | Description                                                      |
+|----------|------------------------------------------------------------------|
+| `name`   | Friendly display name shown in the GUI                           |
+| `type`   | `"Folder"` for directory junctions, `"File"` for file symlinks   |
+| `source` | Where the application expects its data (original path)           |
+| `target` | Where the data actually lives (your synced folder or file)       |
 
-The config is updated automatically when you add, edit, or remove entries via the GUI.
+The `type` field is optional — entries without it default to `"Folder"` for backwards compatibility. The config is updated automatically when you add, edit, or remove entries via the GUI.
 
 ---
 
@@ -78,13 +89,13 @@ The config is updated automatically when you add, edit, or remove entries via th
 
 Each redirect card shows one of these status badges:
 
-| Badge        | Meaning                                                                 |
-|--------------|-------------------------------------------------------------------------|
-| **Active**       | Junction point exists and points to the correct target              |
-| **Inactive**     | Source path doesn't exist — junction not needed yet                 |
-| **Not Linked**   | Source exists as a regular folder — data not yet redirected         |
-| **Broken Link**  | Junction exists but the target folder is missing                    |
-| **Wrong Target** | Junction exists but points to a different location                  |
+| Badge        | Meaning                                                                      |
+|--------------|------------------------------------------------------------------------------|
+| **Active**       | Link exists and points to the correct target                             |
+| **Inactive**     | Source path doesn't exist — link not created yet                         |
+| **Not Linked**   | Source exists as a regular file/folder — data not yet redirected          |
+| **Broken Link**  | Link exists but the target is missing                                    |
+| **Wrong Target** | Link exists but points to a different location                           |
 
 ---
 
@@ -92,14 +103,14 @@ Each redirect card shows one of these status badges:
 
 When you click **Enable**, the app handles existing data at the source path:
 
-- **Source doesn't exist** → Junction is created immediately (creates target folder if needed)
-- **Source is a regular folder, target doesn't exist** → Asks to **Move** data to target, **Delete** it, or **Cancel**
-- **Source is a regular folder, target already exists** → Asks to **Delete** source folder (data stays in target), or **Cancel**
-- **Source is already a junction** → Shown as Active, Broken, or Wrong Target; no action taken
+- **Source doesn't exist** → Link is created immediately (creates target file/folder if needed)
+- **Source exists, target doesn't exist** → Asks to **Move** data to target, **Delete** it, or **Cancel**
+- **Source exists, target already exists** → Asks to **Delete** source (data stays in target), or **Cancel**
+- **Source is already linked** → Shown as Active, Broken, or Wrong Target; no action taken
 
 ## Disabling a redirect
 
-Clicking **Disable** removes only the junction point. Your data remains safely in the target folder. The source path simply disappears until you re-enable the redirect.
+Clicking **Disable** removes only the junction point or symbolic link. Your data remains safely in the target location. The source path simply disappears until you re-enable the redirect.
 
 ---
 
