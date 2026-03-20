@@ -860,15 +860,15 @@ function New-RedirectCard {
 
     # Type icon
     $typeIcon = New-Object System.Windows.Controls.TextBlock
-    $typeIcon.FontFamily = [System.Windows.Media.FontFamily]::new("Segoe UI Emoji")
     if ($Item.Type -eq "File") {
-        $typeIcon.Text       = [char]0x1F4C4
+        $typeIcon.Text       = "FILE"
         $typeIcon.Foreground = Get-Brush "#A78BFA"
     } else {
-        $typeIcon.Text       = [char]0x1F4C1
+        $typeIcon.Text       = "DIR"
         $typeIcon.Foreground = Get-Brush "#60A5FA"
     }
-    $typeIcon.FontSize   = 12
+    $typeIcon.FontSize   = 9
+    $typeIcon.FontWeight = [System.Windows.FontWeights]::Bold
     $typeIcon.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $typeIcon.Margin = [System.Windows.Thickness]::new(0,0,8,0)
     [void]$nameRow.Children.Add($typeIcon)
