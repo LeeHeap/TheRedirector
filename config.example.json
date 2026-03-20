@@ -3,28 +3,45 @@
   "redirects": [
     {
       "name": "PrusaSlicer",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Roaming\\PrusaSlicer",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\PrusaSlicer"
     },
     {
       "name": "KeePass",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Roaming\\KeePass",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\KeePass"
     },
     {
       "name": "Everything (Search Tool)",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Roaming\\Everything",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\Everything"
     },
     {
       "name": "Notepad++",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Roaming\\Notepad++",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\Notepad++"
     },
     {
       "name": "PowerToys",
+      "type": "Folder",
       "source": "C:\\Users\\Lee\\AppData\\Local\\Microsoft\\PowerToys",
       "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\PowerToys"
+    },
+    {
+      "name": "SSH Config",
+      "type": "File",
+      "source": "C:\\Users\\Lee\\.ssh\\config",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\.ssh\\config"
+    },
+    {
+      "name": "Git Config",
+      "type": "File",
+      "source": "C:\\Users\\Lee\\.gitconfig",
+      "target": "C:\\Users\\Lee\\OneDrive\\PC Stuff\\Synced Settings\\.gitconfig"
     }
   ]
 }
