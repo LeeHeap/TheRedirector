@@ -494,7 +494,7 @@ function Disable-Redirect {
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="TheRedirector" FontSize="20"
                                    Foreground="White" FontWeight="SemiBold"/>
-                        <TextBlock Text="NTFS Junction Point Manager"
+                        <TextBlock Text="NTFS Junction &amp; Symlink Manager"
                                    FontSize="11" Foreground="#A8D4F5" Margin="1,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
@@ -514,7 +514,8 @@ function Disable-Redirect {
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" >
-                    <Button x:Name="btnAdd"     Content="＋  Add Redirect"  Style="{StaticResource BtnPrimary}"   Margin="0,0,8,0"/>
+                    <Button x:Name="btnAddFolder" Content="＋  Add Folder"  Style="{StaticResource BtnPrimary}"   Margin="0,0,8,0"/>
+                    <Button x:Name="btnAddFile"   Content="＋  Add File"    Style="{StaticResource BtnPrimary}"   Margin="0,0,8,0"/>
                     <Button x:Name="btnEdit"    Content="✎  Edit"           Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" IsEnabled="False"/>
                     <Button x:Name="btnRemove"  Content="✕  Remove"         Style="{StaticResource BtnDanger}"    Margin="0,0,20,0" IsEnabled="False"/>
                     <Rectangle Width="1" Height="22" Fill="#333333" Margin="0,0,20,0"/>
@@ -537,7 +538,7 @@ function Disable-Redirect {
                 <TextBlock Text="No redirects configured yet"
                            FontSize="16" Foreground="#555555"
                            HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                <TextBlock Text="Click '＋ Add Redirect' in the toolbar to get started."
+                <TextBlock Text="Click '＋ Add Folder' or '＋ Add File' in the toolbar to get started."
                            FontSize="12" Foreground="#3D3D3D" HorizontalAlignment="Center"/>
             </StackPanel>
 
@@ -746,7 +747,8 @@ function Disable-Redirect {
 $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$MainXAML.OuterXml)
 $script:Window = [System.Windows.Markup.XamlReader]::Load($reader)
 
-$script:btnAdd     = $script:Window.FindName('btnAdd')
+$script:btnAddFolder = $script:Window.FindName('btnAddFolder')
+$script:btnAddFile   = $script:Window.FindName('btnAddFile')
 $script:btnEdit    = $script:Window.FindName('btnEdit')
 $script:btnRemove  = $script:Window.FindName('btnRemove')
 $script:btnEnable  = $script:Window.FindName('btnEnable')
@@ -1067,17 +1069,6 @@ function Show-EditDialog {
 # ─────────────────────────────────────────────────────────────────────────────
 #  EVENT HANDLERS
 # ─────────────────────────────────────────────────────────────────────────────
-
-# Add
-$script:btnAdd.Add_Click({
-    $r = Show-EditDialog
-    if ($r) {
-        $script:Redirects += [PSCustomObject]@{ Name = $r.Name; Source = $r.Source; Target = $r.Target }
-        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
-        Update-ListView
-        Set-Status "Added: $($r.Name)" "#4ADE80"
-    }
-})
 
 # Edit
 $script:btnEdit.Add_Click({
