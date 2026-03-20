@@ -19,7 +19,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # ─────────────────────────────────────────────────────────────────────────────
 #  GLOBALS
 # ─────────────────────────────────────────────────────────────────────────────
-$script:Version      = "1.0.0"
+$script:Version      = "1.1.0"
 $script:ConfigPath   = Join-Path $PSScriptRoot "config.json"
 $script:Redirects    = @()
 $script:SelectedItem   = $null
@@ -76,7 +76,12 @@ function Load-Config {
         try {
             $json = Get-Content $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
             $script:Redirects = @($json.redirects | ForEach-Object {
-                [PSCustomObject]@{ Name = $_.name; Source = $_.source; Target = $_.target }
+                [PSCustomObject]@{
+                    Name   = $_.name
+                    Type   = if ($_.type) { $_.type } else { "Folder" }
+                    Source = $_.source
+                    Target = $_.target
+                }
             })
             "$(Get-Date -f 'HH:mm:ss') Loaded $($script:Redirects.Count) redirect(s)." | Add-Content $log
         } catch {
@@ -95,7 +100,7 @@ function Load-Config {
 function Save-Config {
     $obj = @{
         redirects = @($script:Redirects | ForEach-Object {
-            @{ name = $_.Name; source = $_.Source; target = $_.Target }
+            [ordered]@{ name = $_.Name; type = $_.Type; source = $_.Source; target = $_.Target }
         })
     }
     $obj | ConvertTo-Json -Depth 5 | Set-Content $script:ConfigPath -Encoding UTF8
