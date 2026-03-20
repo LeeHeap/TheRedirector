@@ -167,9 +167,12 @@ function Get-StatusMeta {
 function Enable-Redirect {
     param($Redirect)
 
-    $source = $Redirect.Source
-    $target = $Redirect.Target
-    $status = Get-RedirectStatus -Source $source -Target $target -Type $Redirect.Type
+    $source   = $Redirect.Source
+    $target   = $Redirect.Target
+    $isFile   = $Redirect.Type -eq "File"
+    $typeWord = if ($isFile) { "file" } else { "folder" }
+    $linkWord = if ($isFile) { "symbolic link" } else { "junction" }
+    $status   = Get-RedirectStatus -Source $source -Target $target -Type $Redirect.Type
 
     switch ($status) {
         "Active" {
@@ -183,40 +186,42 @@ function Enable-Redirect {
             $item   = Get-Item -LiteralPath $source -Force
             $actual = if ($item.Target) { $item.Target[0] } else { "unknown" }
             [System.Windows.MessageBox]::Show(
-                "A junction already exists at the source but points elsewhere:`n  $actual`n`nPlease disable it first, or remove it manually.",
+                "A $linkWord already exists at the source but points elsewhere:`n  $actual`n`nPlease disable it first, or remove it manually.",
                 "Cannot Enable", [System.Windows.MessageBoxButton]::OK,
                 [System.Windows.MessageBoxImage]::Warning) | Out-Null
             return $false
         }
         "Broken" {
             [System.Windows.MessageBox]::Show(
-                "A junction exists at the source but the target folder is missing:`n  $target`n`nPlease restore the target folder or disable this redirect.",
-                "Broken Junction", [System.Windows.MessageBoxButton]::OK,
+                "A $linkWord exists at the source but the target $typeWord is missing:`n  $target`n`nPlease restore the target $typeWord or disable this redirect.",
+                "Broken $linkWord", [System.Windows.MessageBoxButton]::OK,
                 [System.Windows.MessageBoxImage]::Warning) | Out-Null
             return $false
         }
         "Unlinked" {
-            # Source exists as a regular folder
             $targetExists = Test-Path -LiteralPath $target
 
             if ($targetExists) {
                 $ans = [System.Windows.MessageBox]::Show(
-                    "The source folder has existing data, and the target folder already exists too.`n`nSource: $source`nTarget: $target`n`nTo proceed, the source folder must be deleted (your data lives in the target).`n`nDelete the source folder and create the junction?",
+                    "The source $typeWord has existing data, and the target already exists too.`n`nSource: $source`nTarget: $target`n`nTo proceed, the source must be deleted (your data lives in the target).`n`nDelete the source $typeWord and create the $($linkWord)?",
                     "Data Conflict - Confirm",
                     [System.Windows.MessageBoxButton]::YesNo,
                     [System.Windows.MessageBoxImage]::Warning)
 
                 if ($ans -ne [System.Windows.MessageBoxResult]::Yes) { return $false }
 
-                try   { Remove-Item -LiteralPath $source -Recurse -Force }
+                try {
+                    if ($isFile) { Remove-Item -LiteralPath $source -Force }
+                    else         { Remove-Item -LiteralPath $source -Recurse -Force }
+                }
                 catch {
-                    [System.Windows.MessageBox]::Show("Could not delete source folder:`n$_", "Error",
+                    [System.Windows.MessageBox]::Show("Could not delete source $($typeWord):`n$_", "Error",
                         [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
                     return $false
                 }
             } else {
                 $ans = [System.Windows.MessageBox]::Show(
-                    "The source folder contains data. What should happen to it?`n`nSource: $source`nTarget: $target`n`nYes    - Move data to the target location`nNo     - Delete source data (data will be lost!)`nCancel - Do nothing",
+                    "The source $typeWord contains data. What should happen to it?`n`nSource: $source`nTarget: $target`n`nYes    - Move data to the target location`nNo     - Delete source data (data will be lost!)`nCancel - Do nothing",
                     "Existing Data Found",
                     [System.Windows.MessageBoxButton]::YesNoCancel,
                     [System.Windows.MessageBoxImage]::Question)
@@ -236,9 +241,12 @@ function Enable-Redirect {
                         }
                     }
                     ([System.Windows.MessageBoxResult]::No) {
-                        try   { Remove-Item -LiteralPath $source -Recurse -Force }
+                        try {
+                            if ($isFile) { Remove-Item -LiteralPath $source -Force }
+                            else         { Remove-Item -LiteralPath $source -Recurse -Force }
+                        }
                         catch {
-                            [System.Windows.MessageBox]::Show("Could not delete source folder:`n$_", "Error",
+                            [System.Windows.MessageBox]::Show("Could not delete source $($typeWord):`n$_", "Error",
                                 [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
                             return $false
                         }
@@ -248,18 +256,27 @@ function Enable-Redirect {
             }
         }
         "Inactive" {
-            # Source doesn't exist – just need to create the junction
             $targetExists = Test-Path -LiteralPath $target
             if (-not $targetExists) {
                 $ans = [System.Windows.MessageBox]::Show(
-                    "The target folder doesn't exist yet:`n  $target`n`nCreate it and the junction point?",
+                    "The target $typeWord doesn't exist yet:`n  $target`n`nCreate it and the $($linkWord)?",
                     "Target Missing",
                     [System.Windows.MessageBoxButton]::YesNo,
                     [System.Windows.MessageBoxImage]::Question)
                 if ($ans -ne [System.Windows.MessageBoxResult]::Yes) { return $false }
-                try { New-Item -ItemType Directory -Path $target -Force | Out-Null }
+                try {
+                    if ($isFile) {
+                        $parentDir = Split-Path -Parent $target
+                        if ($parentDir -and -not (Test-Path $parentDir)) {
+                            New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
+                        }
+                        New-Item -ItemType File -Path $target -Force | Out-Null
+                    } else {
+                        New-Item -ItemType Directory -Path $target -Force | Out-Null
+                    }
+                }
                 catch {
-                    [System.Windows.MessageBox]::Show("Could not create target folder:`n$_", "Error",
+                    [System.Windows.MessageBox]::Show("Could not create target $($typeWord):`n$_", "Error",
                         [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
                     return $false
                 }
@@ -267,16 +284,20 @@ function Enable-Redirect {
         }
     }
 
-    # --- Create the junction point ---
+    # --- Create the link ---
     try {
         $parentDir = Split-Path -Parent $source
         if ($parentDir -and -not (Test-Path $parentDir)) {
             New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
         }
-        New-Item -ItemType Junction -Path $source -Target $target | Out-Null
+        if ($isFile) {
+            New-Item -ItemType SymbolicLink -Path $source -Target $target | Out-Null
+        } else {
+            New-Item -ItemType Junction -Path $source -Target $target | Out-Null
+        }
         return $true
     } catch {
-        [System.Windows.MessageBox]::Show("Failed to create junction point:`n$_", "Error",
+        [System.Windows.MessageBox]::Show("Failed to create $($linkWord):`n$_", "Error",
             [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
         return $false
     }
