@@ -1110,6 +1110,28 @@ function Show-EditDialog {
 #  EVENT HANDLERS
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Add Folder
+$script:btnAddFolder.Add_Click({
+    $r = Show-EditDialog -Type "Folder"
+    if ($r) {
+        $script:Redirects += [PSCustomObject]@{ Name = $r.Name; Type = $r.Type; Source = $r.Source; Target = $r.Target }
+        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
+        Update-ListView
+        Set-Status "Added: $($r.Name)" "#4ADE80"
+    }
+})
+
+# Add File
+$script:btnAddFile.Add_Click({
+    $r = Show-EditDialog -Type "File"
+    if ($r) {
+        $script:Redirects += [PSCustomObject]@{ Name = $r.Name; Type = $r.Type; Source = $r.Source; Target = $r.Target }
+        try { Save-Config } catch { Set-Status "Warning: config save failed: $_" "#FBBF24" }
+        Update-ListView
+        Set-Status "Added: $($r.Name)" "#4ADE80"
+    }
+})
+
 # Edit
 $script:btnEdit.Add_Click({
     if (-not $script:SelectedItem) { return }
@@ -1128,11 +1150,12 @@ $script:btnEdit.Add_Click({
 # Remove
 $script:btnRemove.Add_Click({
     if (-not $script:SelectedItem) { return }
-    $name   = $script:SelectedItem.Name
-    $status = $script:SelectedItem.Status
+    $name     = $script:SelectedItem.Name
+    $status   = $script:SelectedItem.Status
+    $linkWord = if ($script:SelectedItem.Redirect.Type -eq "File") { "symbolic link" } else { "junction point" }
 
     $extra = if ($status -eq "Active") {
-        "`n`nNote: The junction point will NOT be automatically removed. Disable it first if you want to unlink it."
+        "`n`nNote: The $linkWord will NOT be automatically removed. Disable it first if you want to unlink it."
     } else { "" }
 
     $ans = [System.Windows.MessageBox]::Show(
