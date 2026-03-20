@@ -974,13 +974,26 @@ function Update-ListView {
 # ─────────────────────────────────────────────────────────────────────────────
 function Show-EditDialog {
     param(
-        [PSCustomObject]$Existing = $null   # $null = Add mode
+        [PSCustomObject]$Existing = $null,   # $null = Add mode
+        [string]$Type = "Folder"             # "File" or "Folder"
     )
 
     $dlgReader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$EditXAML.OuterXml)
     $dlg = [System.Windows.Markup.XamlReader]::Load($dlgReader)
     $dlg.Owner = $script:Window
-    $dlg.Title = if ($Existing) { "Edit Redirect - $($Existing.Name)" } else { "Add Redirect" }
+    $effectiveType = if ($Existing) { $Existing.Type } else { $Type }
+    $dlg.Title = if ($Existing) { "Edit $effectiveType Redirect - $($Existing.Name)" } else { "Add $effectiveType Redirect" }
+
+    # Add a read-only type label at the top of the dialog
+    $dlgGrid = $dlg.Content
+    $typeLbl = New-Object System.Windows.Controls.TextBlock
+    $typeLbl.Text       = "Type: $effectiveType"
+    $typeLbl.FontSize   = 11
+    $typeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#6B7280")
+    $typeLbl.Margin     = [System.Windows.Thickness]::new(0, 0, 0, 4)
+    $typeLbl.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
+    [System.Windows.Controls.Grid]::SetRow($typeLbl, 0)
+    [void]$dlgGrid.Children.Add($typeLbl)
 
     $txtName   = $dlg.FindName('txtName')
     $txtSource = $dlg.FindName('txtSource')
@@ -1003,20 +1016,47 @@ function Show-EditDialog {
     # like $txtSource, $dlg, $Existing that are defined in this function scope.
 
     $btnBS.Add_Click({
-        $fd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fd.Description  = "Select Source Path"
-        $fd.SelectedPath = $txtSource.Text
-        if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $txtSource.Text = $fd.SelectedPath
+        if ($effectiveType -eq "File") {
+            $fd = New-Object System.Windows.Forms.OpenFileDialog
+            $fd.Title = "Select Source File"
+            $initPath = $txtSource.Text
+            if ($initPath -and (Test-Path (Split-Path $initPath -Parent))) {
+                $fd.InitialDirectory = Split-Path $initPath -Parent
+                $fd.FileName = Split-Path $initPath -Leaf
+            }
+            if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $txtSource.Text = $fd.FileName
+            }
+        } else {
+            $fd = New-Object System.Windows.Forms.FolderBrowserDialog
+            $fd.Description  = "Select Source Path"
+            $fd.SelectedPath = $txtSource.Text
+            if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $txtSource.Text = $fd.SelectedPath
+            }
         }
     }.GetNewClosure())
 
     $btnBT.Add_Click({
-        $fd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fd.Description  = "Select Target Path"
-        $fd.SelectedPath = $txtTarget.Text
-        if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $txtTarget.Text = $fd.SelectedPath
+        if ($effectiveType -eq "File") {
+            $fd = New-Object System.Windows.Forms.OpenFileDialog
+            $fd.Title = "Select Target File"
+            $fd.CheckFileExists = $false
+            $initPath = $txtTarget.Text
+            if ($initPath -and (Test-Path (Split-Path $initPath -Parent))) {
+                $fd.InitialDirectory = Split-Path $initPath -Parent
+                $fd.FileName = Split-Path $initPath -Leaf
+            }
+            if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $txtTarget.Text = $fd.FileName
+            }
+        } else {
+            $fd = New-Object System.Windows.Forms.FolderBrowserDialog
+            $fd.Description  = "Select Target Path"
+            $fd.SelectedPath = $txtTarget.Text
+            if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $txtTarget.Text = $fd.SelectedPath
+            }
         }
     }.GetNewClosure())
 
@@ -1048,7 +1088,7 @@ function Show-EditDialog {
             }
         }
 
-        $script:DlgResult = [PSCustomObject]@{ Name = $n; Source = $s; Target = $t }
+        $script:DlgResult = [PSCustomObject]@{ Name = $n; Type = $effectiveType; Source = $s; Target = $t }
         $dlg.DialogResult = $true
         $dlg.Close()
     }.GetNewClosure())
