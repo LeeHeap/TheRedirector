@@ -306,30 +306,37 @@ function Enable-Redirect {
 function Disable-Redirect {
     param($Redirect)
 
-    $source = $Redirect.Source
-    $status = Get-RedirectStatus -Source $source -Target $Redirect.Target -Type $Redirect.Type
+    $source   = $Redirect.Source
+    $isFile   = $Redirect.Type -eq "File"
+    $typeWord = if ($isFile) { "file" } else { "folder" }
+    $linkWord = if ($isFile) { "symbolic link" } else { "junction" }
+    $status   = Get-RedirectStatus -Source $source -Target $Redirect.Target -Type $Redirect.Type
 
     if ($status -eq "Inactive") {
         [System.Windows.MessageBox]::Show(
-            "No junction point found at the source path. Nothing to disable.",
+            "No $linkWord found at the source path. Nothing to disable.",
             "Not Active", [System.Windows.MessageBoxButton]::OK,
             [System.Windows.MessageBoxImage]::Information) | Out-Null
         return $false
     }
     if ($status -eq "Unlinked") {
         [System.Windows.MessageBox]::Show(
-            "The source path is a regular folder, not a junction point. Cannot disable.",
-            "Not a Junction", [System.Windows.MessageBoxButton]::OK,
+            "The source path is a regular $typeWord, not a $linkWord. Cannot disable.",
+            "Not a Link", [System.Windows.MessageBoxButton]::OK,
             [System.Windows.MessageBoxImage]::Warning) | Out-Null
         return $false
     }
 
-    # Remove only the junction, not the target contents
+    # Remove only the link, not the target contents
     try {
-        [System.IO.Directory]::Delete($source, $false)
+        if ($isFile) {
+            [System.IO.File]::Delete($source)
+        } else {
+            [System.IO.Directory]::Delete($source, $false)
+        }
         return $true
     } catch {
-        [System.Windows.MessageBox]::Show("Failed to remove junction point:`n$_", "Error",
+        [System.Windows.MessageBox]::Show("Failed to remove $($linkWord):`n$_", "Error",
             [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
         return $false
     }
@@ -1130,9 +1137,10 @@ $script:btnEnable.Add_Click({
 # Disable
 $script:btnDisable.Add_Click({
     if (-not $script:SelectedItem) { return }
-    $redirect = $script:SelectedItem.Redirect
+    $redirect  = $script:SelectedItem.Redirect
+    $typeWord  = if ($redirect.Type -eq "File") { "symbolic link" } else { "junction" }
     $ans = [System.Windows.MessageBox]::Show(
-        "Disable the junction for '$($redirect.Name)'?`n`nThe junction point will be removed. Your data remains safely at:`n  $($redirect.Target)",
+        "Disable the $typeWord for '$($redirect.Name)'?`n`nThe $typeWord will be removed. Your data remains safely at:`n  $($redirect.Target)",
         "Confirm Disable",
         [System.Windows.MessageBoxButton]::YesNo,
         [System.Windows.MessageBoxImage]::Question)
